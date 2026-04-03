@@ -1,0 +1,12 @@
+# Build artifacts
+/scalefleet
+bin/
+
+# Go test/coverage artifacts
+coverage.out
+
+# IDE/editor
+.idea/
+
+# OS files
+.DS_Store
