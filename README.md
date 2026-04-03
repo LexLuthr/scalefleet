@@ -22,6 +22,79 @@
 - Exposes provider commands (`run-<provider>` pattern).
 - Parses flags and builds `scaler.Config`.
 
+### Component Diagram
+
+```mermaid
+flowchart TB
+  subgraph CLI[CLI cmd/scalefleet]
+    A[run-gcp]
+    B[parse flags]
+    C[build scaler.Config]
+  end
+
+  subgraph CORE[Core packages/scaler]
+    D[Run]
+    E[validate config]
+    F[derive runtime vars]
+    G[ensure GitHub scale set]
+    H[intent engine]
+  end
+
+  subgraph PROV[Provider package]
+    P1[Validate]
+    P2[ListManagedRunnerVMs]
+    P3[CreateRunnerVM]
+    P4[DeleteRunnerVM]
+    P5[LoadSecretValue]
+  end
+
+  subgraph EXT[External systems]
+    X1[GitHub APIs]
+    X2[Cloud compute APIs]
+    X3[Cloud secret APIs]
+  end
+
+  A --> B --> C --> D
+  D --> E --> F --> G --> H
+  G <--> X1
+  H --> P2
+  H --> P3
+  H --> P4
+  P1 --> D
+  D --> P5
+  P2 <--> X2
+  P3 <--> X2
+  P4 <--> X2
+  P5 <--> X3
+```
+
+### Runtime Sequence
+
+```mermaid
+sequenceDiagram
+  participant C as CLI run-gcp
+  participant S as scaler.Run
+  participant G as GitHub APIs
+  participant P as CloudProvider
+  participant X as Cloud APIs
+
+  C->>S: Build config and call Run
+  S->>S: Validate and derive runtime vars
+  S->>P: Validate
+  S->>G: Resolve group + ensure scale set
+  G-->>S: Create intent
+  S->>G: Generate JIT runner config
+  S->>P: CreateRunnerVM
+  P->>X: Create VM
+  X-->>P: VM ready
+  P-->>S: VM metadata
+  G-->>S: Delete intent
+  S->>P: DeleteRunnerVM
+  P->>X: Delete VM
+  X-->>P: Deleted
+  P-->>S: Ack
+```
+
 ## How It Works
 
 1. Build config from CLI flags or library caller input.
